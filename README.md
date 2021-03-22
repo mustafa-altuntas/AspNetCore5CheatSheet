@@ -599,3 +599,110 @@ Bu işlemlerin ardından şimdi ``Startup.cs`` dosyamın içinde ``Configure()``
 ```c#
 UseCostomeExceptionHandle.UseCostomeException(app);
 ```
+
+
+# DropDownList - Ajax JsonResult Kullaımı
+Bu başlık aldında senaryomuz şuşekilde olacak veritabanında şehirler ve bu şehirlere ait ilçeler olacak ve bide sayfa açıldığında alt alta iki tane selectlist oluşturacağız birinde iller diğerinde ilçeleri lisleliyeceğiz. İlçeler il seçmeden listelenmiyecek ve il seçtiğimizde ilçeleri ajax ile sayfamıza getireceğiz.
+
+İlk önce modellerimiz oluşturalım ``Sehir.cs``, ``Ilce.cs`` ve ``HomeViewModel.cs`` adlarında 3 class oluşturuyoruz. Sehir.cs ve Ilce.cs veri tabanımızdaki tablolarımıza karşılık geliyor tamam onu anladık da HomeViewModel.cs ne için dediğinizi duar gibiyim hemen cevaplayayım HomeViewModel.cs class'ımızda indek sayfasında selectList'imizde seçim yaptığımızda dönecek SehirId ve IlceId 'yi tutacağız. Modellerim suşekilde ...
+
+```c#
+public class Ilce
+    {
+        public int Id { get; set; }
+        public string Name { get; set; }
+
+        public int SehirId { get; set; }
+        public virtual Sehir Sehir { get; set; }
+
+    }
+```
+
+```c#
+    public class Sehir
+    {
+        public Sehir()
+        {
+            Ilces = new List<Ilce>();
+        }
+        public int Id { get; set; }
+        public string Name { get; set; }
+
+        public virtual List<Ilce> Ilces { get; set; }
+
+    }
+```
+
+```c#
+    public class HomeViewModel
+    {
+        public int SehirId { get; set; }
+        public int IlceId { get; set; }
+    }
+```
+
+Evet modellerimizi oluşturduk şimdide HomeController'umuzdaki index methodunu kodlayalım. Burada ilk olarak index sayfamıza şehirleri getiriyoruz. Daha sonra kullanıcı bir şehir seçtiğinde ajax ile Veriler() methodunu çalıştırıyoruz ve veritabanından sayfamıza ilçeleri çekiyoruz.
+
+```c#
+        private readonly AppDbContext _context;
+        public HomeController(AppDbContext context)
+        {
+            _context = context;
+        }
+        public IActionResult Index()
+        {
+            var sehirler = _context.Sehirs.ToList();
+            ViewBag.Sehirler = new SelectList(sehirler, "Id", "Name");
+            return View();
+        }
+
+        public JsonResult Veriler(int SehirId)
+        {
+            var veriler = _context.Ilces.Where(x=>x.SehirId==SehirId).ToList();
+
+            return Json(veriler);
+        }
+```
+
+Şimdide html tarafına bakalım index.cshtml sayfasına bakalım.
+```c#
+@model HomeViewModel
+
+<br />
+<br />
+<div class="container">
+    <div class="form-group">
+        @if (ViewBag.Sehirler != null)
+        {
+            @Html.DropDownListFor(model => model.SehirId, ViewBag.Sehirler as SelectList, "--Şehir Seç", new { @class = "form-control" })
+        }
+    </div>
+
+    <div class="form-group">
+        @Html.DropDownListFor(model => model.IlceId, new SelectList(""), "--İlçe Seç", new { @class = "form-control" })
+    </div>
+
+</div>
+
+//Ajax'ın çalışması için jquery kütüphanesini projemize dahil ediyoruz.
+<script src="~/lib/jquery/dist/jquery.js"></script>
+
+<script>
+    $("#SehirId").change(function () {
+        $.ajax({
+            type: "GET",
+            url: '@Url.Action("Veriler")',
+            data: { SehirId: $("#SehirId").val() },
+            dataType: "json",
+            success: function (data) {
+                $("#IlceId").empty;
+                data.forEach(function (item) {
+                    $("#IlceId").append("<option value='" +item.id+"' >"+item.name+"</option>")
+                })
+
+            }
+        })
+    })
+    
+</script>
+```
