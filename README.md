@@ -706,3 +706,13 @@ Evet modellerimizi oluşturduk şimdide HomeController'umuzdaki index methodunu 
     
 </script>
 ```
+
+
+# ModelState 'e hata ekleme -- error ekleme
+
+
+```c#
+    ModelState.AddModelError("", item.Description);
+    ModelState.AddModelError("Hedef input", "Hata mesajı");
+```
+
